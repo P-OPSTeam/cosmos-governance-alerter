@@ -64,7 +64,12 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                 log.debug(f"vote: {vote}")
                 if "messages" in vote: #v1
                     vote_id = vote["id"]
-                    title = vote["messages"][0]["content"]["title"] if 'title' in vote["messages"][0]["content"] else "No Title"
+
+                    if "interchainstaking.v1.MsgGovReopenChannel" in vote["messages"][0]["@type"]:
+                    # testnet quicksilver id 14 onward
+                        title = vote["messages"][0]["title"] if 'title' in vote["messages"][0] else "No Title"
+                    else:
+                        title = vote["messages"][0]["content"]["title"] if 'title' in vote["messages"][0]["content"] else "No Title"
                     if len(vote["messages"]) > 1: #v1 with multiple proposal ie quicksilver mainnet id 12
                         title = "Careful this has multiple proposal" + title
                 else: #v1beta1
