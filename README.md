@@ -6,10 +6,10 @@ Cosmos Governance vote alerter
 ## Installation
 ```bash
 cd ~
-git clone https://github.com/P-OPSTeam/governance-vote-alerter.git
+git clone https://github.com/P-OPSTeam/cosmos-governance-alerter.git
 sudo apt update
 sudo apt install python3 python3-virtualenv
-cd governance-vote-alerter.git
+cd cosmos-governance-alerter
 virtualenv -p /usr/bin/python3 .venv
 source .venv/bin/activate
 curl -sS https://bootstrap.pypa.io/get-pip.py | python3
