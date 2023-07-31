@@ -146,7 +146,7 @@ def send_alert(vote, chain_data, chainname, alerts_config, pdaction = "trigger")
         integration_key = alerts_config.get('pagerduty_integration_key')
         send_pagerduty_alert(vote, chain_data, chainname, integration_key, pdaction)
 
-    if alerts_config.get('discord_enabled', False):
+    if alerts_config.get('discord_enabled', False) and pdaction == "trigger":
         webhook_url = alerts_config.get('discord_webhook_url')
         send_discord_alert(vote, chain_data, chainname, webhook_url)
 
