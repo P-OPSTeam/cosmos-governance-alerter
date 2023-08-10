@@ -41,7 +41,9 @@ def remove_expired_votes(config, votes):
     for chainname in votes:
         chain_votes = votes[chainname]       
         for vote in chain_votes:
-            if is_vote_expired(vote):
+            if chainname not in chain_config:
+                log.warning(f"{chainname} not configured")
+            if is_vote_expired(vote) and chainname in chain_config:
                 send_alert(vote, chain_config[chainname], chainname, alerts_config, pdaction = "resolve")
         votes[chainname] = [vote for vote in votes[chainname] if not is_vote_expired(vote)]
     save_votes(app_config, votes)
