@@ -51,10 +51,13 @@ def remove_expired_votes(config, votes):
 def check_new_votes(chainname, chain_data, votes, alerts_config):
     try:
         response = requests.get(chain_data['api_endpoint'])
+
         if response.status_code == 200:
             response_data = response.json()
-            if "code" in response_data:
-                logging.error(response_data)
+            if "code" in response_data or len(response_data) == 0:
+                log.error(f"http response is : {response_data}")
+                return
+
             vote_proposals = response_data.get("proposals", [])
 
             current_time = int(time.time())
