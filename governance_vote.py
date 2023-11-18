@@ -124,14 +124,17 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                     url = f"{chain_data['api_endpoint']}?pagination.key={next_key}"
                     response = requests.get(url, timeout=10)
             else:
+                next_page = False
                 log.error(response.json())
 
     except requests.exceptions.RequestException as e:
         log.error(f"Failed to fetch vote proposals from {chain_data['api_endpoint']}: {e}")
         log.error(traceback.format_exc())
+        next_page = False
     except (KeyError, ValueError, TypeError) as e:
         log.error(f"Error processing vote proposals: {e}")
         log.error(traceback.format_exc())
+        next_page = False
 
 def send_pagerduty_alert(vote, chain_data, chainname, integration_key, action = "trigger"):
     """Send a pagerduty alert"""
