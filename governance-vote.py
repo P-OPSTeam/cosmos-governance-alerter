@@ -33,7 +33,7 @@ def save_votes(app_config, votes):
         json.dump(votes, votes_file, indent=2)
 
 def remove_expired_votes(config, votes):
-    log.info(f"Searching for expired votes")
+    log.info("Searching for expired votes")
     alerts_config = config['alerts_config']
     chain_config = config['chain_config']
     app_config = config['app_config']
@@ -44,61 +44,82 @@ def remove_expired_votes(config, votes):
             if chainname not in chain_config:
                 log.warning(f"{chainname} not configured")
             if is_vote_expired(vote) and chainname in chain_config:
-                send_alert(vote, chain_config[chainname], chainname, alerts_config, pdaction = "resolve")
+                send_alert(vote, chain_config[chainname], 
+                           chainname, alerts_config, pdaction = "resolve")
         votes[chainname] = [vote for vote in votes[chainname] if not is_vote_expired(vote)]
     save_votes(app_config, votes)
 
 def check_new_votes(chainname, chain_data, votes, alerts_config):
+    """Checking for new governance vote"""
     try:
-        response = requests.get(chain_data['api_endpoint'])
+        next_page = True # use for looping over the rest answer page  
+        response = requests.get(f"{chain_data['api_endpoint']}", timeout=10)
+        while next_page:
+            if response.status_code == 200:
+                response_data = response.json()
+                if "code" in response_data or len(response_data) == 0:
+                    log.error(f"http response is : {response_data}")
+                    return
 
-        if response.status_code == 200:
-            response_data = response.json()
-            if "code" in response_data or len(response_data) == 0:
-                log.error(f"http response is : {response_data}")
-                return
+                vote_proposals = response_data.get("proposals", [])
 
-            vote_proposals = response_data.get("proposals", [])
+                current_time = int(time.time())
+                for vote in vote_proposals:
+                    # v1beta1 and v1 has different api answer structure
+                    log.debug(f"vote: {vote}")
+                    if "messages" in vote: #v1
+                        vote_id = vote["id"]
+                        message ="interchainstaking.v1.MsgGovReopenChannel"
+                        if message in vote["messages"][0]["@type"]:
+                        # testnet quicksilver id 14 onward
+                            title = (vote["messages"][0]["title"] 
+                                     if 'title' in vote["messages"][0] 
+                                     else "No Title")
+                        else:
+                            title = (vote["messages"][0]["content"]["title"] 
+                                     if 'title' in vote["messages"][0]["content"] 
+                                     else "No Title")
+                        if len(vote["messages"]) > 1: #v1 with multiple proposal
+                            #ie quicksilver mainnet id 12
+                            title = "Careful this has multiple proposal" + title
+                    else: #v1beta1
+                        vote_id = vote["proposal_id"]
+                        title = (vote["content"]["title"] 
+                                 if 'title' in vote["content"] 
+                                 else "No Title")
 
-            current_time = int(time.time())
-            for vote in vote_proposals:
-                # v1beta1 and v1 has different api answer structure
-                log.debug(f"vote: {vote}")
-                if "messages" in vote: #v1
-                    vote_id = vote["id"]
+                    end_date = parser.parse(vote["voting_end_time"]).timestamp()
 
-                    if "interchainstaking.v1.MsgGovReopenChannel" in vote["messages"][0]["@type"]:
-                    # testnet quicksilver id 14 onward
-                        title = vote["messages"][0]["title"] if 'title' in vote["messages"][0] else "No Title"
-                    else:
-                        title = vote["messages"][0]["content"]["title"] if 'title' in vote["messages"][0]["content"] else "No Title"
-                    if len(vote["messages"]) > 1: #v1 with multiple proposal ie quicksilver mainnet id 12
-                        title = "Careful this has multiple proposal" + title
-                else: #v1beta1
-                    vote_id = vote["proposal_id"]
-                    title = vote["content"]["title"] if 'title' in vote["content"] else "No Title"
+                    if (
+                        current_time < end_date and 
+                        (chainname not in votes or 
+                         not any(existing_vote["vote_id"] == vote_id 
+                                 for existing_vote in votes[chainname]))
+                    ):
+                        start_date = vote["submit_time"]
+                        end_date = vote["voting_end_time"]
+                        status = vote["status"]
 
-                end_date = parser.parse(vote["voting_end_time"]).timestamp()
-                
-                if current_time < end_date and (chainname not in votes or not any(existing_vote["vote_id"] == vote_id for existing_vote in votes[chainname])):
-                    start_date = vote["submit_time"]
-                    end_date = vote["voting_end_time"]
-                    status = vote["status"]
+                        new_vote = {
+                            "vote_id": vote_id,
+                            "title": title,
+                            "start_date": start_date,
+                            "end_date": end_date,
+                            "status": status
+                        }
+                        if chainname not in votes:
+                            votes[chainname]=[]
 
-                    new_vote = {
-                        "vote_id": vote_id,
-                        "title": title,
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "status": status
-                    }
-                    if chainname not in votes:
-                        votes[chainname]=[]
+                        votes[chainname].append(new_vote)
+                        send_alert(new_vote, chain_data, chainname, alerts_config)
 
-                    votes[chainname].append(new_vote)
-                    send_alert(new_vote, chain_data, chainname, alerts_config)
-        else:
-            log.error(response.json())
+                next_key = response_data['pagination']['next_key']
+                next_page = True if next_key is not None else False
+                if next_page:
+                    url = f"{chain_data['api_endpoint']}?pagination.key={next_key}"
+                    response = requests.get(url, timeout=10)
+            else:
+                log.error(response.json())
 
     except requests.exceptions.RequestException as e:
         log.error(f"Failed to fetch vote proposals from {chain_data['api_endpoint']}: {e}")
