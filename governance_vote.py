@@ -58,7 +58,8 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
     """Checking for new governance vote"""
     try:
         next_page = True # use for looping over the rest answer page
-        response = requests.get(f"{chain_data['api_endpoint']}", timeout=10)
+        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30)
+
         while next_page:
             if response.status_code == 200:
                 response_data = response.json()
@@ -71,7 +72,7 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                 current_time = int(time.time())
                 for vote in vote_proposals:
                     # v1beta1 and v1 has different api answer structure
-                    log.debug(f"vote: {vote}")
+                    log.debug(f"vote: {json.dumps(vote)}")
                     if "messages" in vote: #v1
                         vote_id = vote["id"]
                         message ="interchainstaking.v1.MsgGovReopenChannel"
@@ -82,7 +83,8 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                                      else "No Title")
                         else:
                             title = (vote["messages"][0]["content"]["title"]
-                                     if 'title' in vote["messages"][0]["content"]
+                                     if 'content' in vote["messages"][0] and
+                                        'title' in vote["messages"][0]["content"]
                                      else "No Title")
                         if len(vote["messages"]) > 1: #v1 with multiple proposal
                             #ie quicksilver mainnet id 12
