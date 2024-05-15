@@ -73,6 +73,10 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                 for vote in vote_proposals:
                     # v1beta1 and v1 has different api answer structure
                     log.debug(f"vote: {json.dumps(vote)}")
+
+                    if "messages" in vote and not vote["messages"]: # empty vote["messages"]
+                        continue
+
                     if "messages" in vote: #v1
                         vote_id = vote["id"]
                         message ="interchainstaking.v1.MsgGovReopenChannel"
@@ -90,10 +94,11 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                             #ie quicksilver mainnet id 12
                             title = "Careful this has multiple proposal" + title
                     else: #v1beta1
-                        vote_id = vote["proposal_id"]
-                        title = (vote["content"]["title"]
-                                 if 'title' in vote["content"]
-                                 else "No Title")
+                        if "proposal_id" in vote:
+                            vote_id = vote["proposal_id"]
+                            title = (vote["content"]["title"]
+                                    if 'title' in vote["content"]
+                                    else "No Title")
 
                     end_date = parser.parse(vote["voting_end_time"]).timestamp()
 
