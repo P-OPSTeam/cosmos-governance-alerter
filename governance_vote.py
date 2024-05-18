@@ -58,6 +58,7 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
     """Checking for new governance vote"""
     try:
         next_page = True # use for looping over the rest answer page
+        v1api = "v1/" in chain_data['api_endpoint'] # True when v1 api else, False means we have v1beta1 api
         response = requests.get(f"{chain_data['api_endpoint']}", timeout=30)
 
         while next_page:
@@ -71,34 +72,20 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
 
                 current_time = int(time.time())
                 for vote in vote_proposals:
-                    # v1beta1 and v1 has different api answer structure
                     log.debug(f"vote: {json.dumps(vote)}")
 
-                    if "messages" in vote and not vote["messages"]: # empty vote["messages"]
-                        continue
+                    # define vote_id
+                    vote_id = vote["id"] if v1api else vote ["proposal_id"]
 
-                    if "messages" in vote: #v1
-                        vote_id = vote["id"]
-                        message ="interchainstaking.v1.MsgGovReopenChannel"
-                        if message in vote["messages"][0]["@type"]:
-                        # testnet quicksilver id 14 onward
-                            title = (vote["messages"][0]["title"]
-                                     if 'title' in vote["messages"][0]
-                                     else "No Title")
-                        else:
-                            title = (vote["messages"][0]["content"]["title"]
-                                     if 'content' in vote["messages"][0] and
-                                        'title' in vote["messages"][0]["content"]
-                                     else "No Title")
-                        if len(vote["messages"]) > 1: #v1 with multiple proposal
-                            #ie quicksilver mainnet id 12
-                            title = "Careful this has multiple proposal" + title
-                    else: #v1beta1
-                        if "proposal_id" in vote:
-                            vote_id = vote["proposal_id"]
-                            title = (vote["content"]["title"]
-                                    if 'title' in vote["content"]
+                    # define title
+                    if v1api:
+                        title = (vote["title"]
+                                    if 'title' in vote
                                     else "No Title")
+                    else: #v1beta1
+                        title = (vote["content"]["title"]
+                                if 'title' in vote["content"]
+                                else "No Title")
 
                     end_date = parser.parse(vote["voting_end_time"]).timestamp()
 
