@@ -87,7 +87,10 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                                 if 'title' in vote["content"]
                                 else "No Title")
 
-                    end_date = parser.parse(vote["voting_end_time"]).timestamp()
+                    if vote['voting_end_time'] is not None: # archway #45
+                        end_date = parser.parse(vote["voting_end_time"]).timestamp()
+                    else:
+                        continue
 
                     if (
                         current_time < end_date and
