@@ -54,12 +54,14 @@ def remove_expired_votes(config, votes):
         votes[chainname] = [vote for vote in votes[chainname] if not is_vote_expired(vote)]
     save_votes(app_config, votes)
 
-def check_new_votes(chainname, chain_data, votes, alerts_config):
+def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
     """Checking for new governance vote"""
     try:
         next_page = True # use for looping over the rest answer page
         v1api = "v1/" in chain_data['api_endpoint'] # True when v1 api else, False means we have v1beta1 api
-        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30)
+        pagination_limit = chain_data['pagination_limit'] if 'pagination_limit' in chain_data else app_config['default_pagination_limit']
+        params = {'pagination.limit': pagination_limit}
+        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params)
 
         while next_page:
             if response.status_code == 200:
@@ -118,8 +120,8 @@ def check_new_votes(chainname, chain_data, votes, alerts_config):
                 next_key = response_data['pagination']['next_key']
                 next_page = next_key is not None
                 if next_page: # call the next page
-                    url = f"{chain_data['api_endpoint']}?pagination.key={next_key}"
-                    response = requests.get(url, timeout=10)
+                    params = {'pagination.key': next_key, 'pagination.limit': pagination_limit}
+                    response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params)
             else:
                 next_page = False
                 log.error(response.json())
@@ -209,7 +211,7 @@ def main():
 
         for chain, chain_data in chain_config.items():
             log.info(f"Processing votes on {chain}")
-            check_new_votes(chain, chain_data, votes, alerts_config)
+            check_new_votes(chain, chain_data, votes, alerts_config, app_config)
 
         save_votes(app_config, votes)
         log.info(f"Waiting {timeout} minutes")

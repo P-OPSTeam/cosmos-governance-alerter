@@ -9,13 +9,15 @@
       "timeout": 5,
       "votes_file": "votes.json",
       "loglevel" : "INFO",
-      "logformat": "text"
+      "logformat": "text",
+      "default_pagination_limit": 100
     },
     "chain_config": {
       "umee": {
         "api_endpoint": "https://rest.cosmos.directory/umee/cosmos/gov/v1beta1/proposals",
         "network": "mainnet",
-        "explorer_governance": "https://www.mintscan.io/umee/proposals"
+        "explorer_governance": "https://www.mintscan.io/umee/proposals",
+        "pagination_limit": 50
       },
       "axelar": {
         "api_endpoint": "https://rest.cosmos.directory/axelar/cosmos/gov/v1beta1/proposals",
