@@ -118,7 +118,7 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                         votes[chainname].append(new_vote)
 
                         # check if the vote is an upgrade
-                        if content_type == "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal":
+                        if content_type == "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal" or content_type == "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade":
                             log.info(f"Upgrade vote detected: {chainname} {vote_id}")
                         
                         send_alert(new_vote, chain_data, chainname, alerts_config)
