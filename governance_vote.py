@@ -4,7 +4,11 @@ import time
 import traceback
 from dateutil import parser
 import requests
+from prometheus_client import start_http_server
 from utils import configure_logging
+from metrics import governance_votes_api_req_status_counter
+from constants.metrics_enum import MetricsNetworkStatus
+
 
 log = None
 
@@ -123,6 +127,12 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                         
                         send_alert(new_vote, chain_data, chainname, alerts_config)
 
+                governance_votes_api_req_status_counter.labels(
+                    name=chainname,
+                    network=chain_data['network'],
+                    api_endpoint=chain_data['api_endpoint'],
+                    status=MetricsNetworkStatus.SUCCESS.value,
+                ).inc()
                 next_key = response_data['pagination']['next_key']
                 next_page = next_key is not None
                 if next_page: # call the next page
@@ -131,15 +141,33 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
             else:
                 next_page = False
                 log.error(response.json())
+                governance_votes_api_req_status_counter.labels(
+                    name=chainname,
+                    network=chain_data['network'],
+                    api_endpoint=chain_data['api_endpoint'],
+                    status=MetricsNetworkStatus.FAILED.value,
+                ).inc()
 
     except requests.exceptions.RequestException as e:
         log.error(f"Failed to fetch vote proposals from {chain_data['api_endpoint']}: {e}")
         log.error(traceback.format_exc())
         next_page = False
+        governance_votes_api_req_status_counter.labels(
+            name=chainname,
+            network=chain_data['network'],
+            api_endpoint=chain_data['api_endpoint'],
+            status=MetricsNetworkStatus.FAILED.value,
+        ).inc()
     except (KeyError, ValueError, TypeError) as e:
         log.error(f"Error processing vote proposals: {e}")
         log.error(traceback.format_exc())
         next_page = False
+        governance_votes_api_req_status_counter.labels(
+            name=chainname,
+            network=chain_data['network'],
+            api_endpoint=chain_data['api_endpoint'],
+            status=MetricsNetworkStatus.FAILED.value,
+        ).inc()
 
 def send_pagerduty_alert(vote, chain_data, chainname, integration_key, action = "trigger"):
     """Send a pagerduty alert"""
@@ -200,6 +228,7 @@ def send_alert(vote, chain_data, chainname, alerts_config, pdaction = "trigger")
 
 def main():
     """main function"""
+    start_http_server(9090)  # start prometheus metrics server
     config = read_config()
     alerts_config = config['alerts_config']
     chain_config = config['chain_config']
