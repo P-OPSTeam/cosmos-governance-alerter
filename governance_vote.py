@@ -1,9 +1,11 @@
 """Governance vote allow the collection of cosmos governance vote"""
 import json
+import os
 import time
 import traceback
 from dateutil import parser
 import requests
+from dotenv import load_dotenv
 from prometheus_client import start_http_server
 from utils import configure_logging
 from metrics import governance_votes_api_req_status_counter
@@ -11,6 +13,9 @@ from constants.metrics_enum import MetricsNetworkStatus
 
 
 log = None
+
+load_dotenv()
+PROMOTEHEUS_PORT = os.getenv("PROMOTEHEUS_PORT", "9090")
 
 def read_config():
     """Read config file"""
@@ -228,7 +233,7 @@ def send_alert(vote, chain_data, chainname, alerts_config, pdaction = "trigger")
 
 def main():
     """main function"""
-    start_http_server(9090)  # start prometheus metrics server
+    start_http_server(int(PROMOTEHEUS_PORT))  # start prometheus metrics server
     config = read_config()
     alerts_config = config['alerts_config']
     chain_config = config['chain_config']

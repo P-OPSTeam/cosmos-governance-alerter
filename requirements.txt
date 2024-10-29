@@ -1,4 +1,5 @@
 requests
 python-dateutil
+python-dotenv
 prometheus_client
 structlog

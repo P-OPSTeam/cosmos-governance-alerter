@@ -37,6 +37,26 @@ Use your favorite editor and edit config.json
   - `network` is only used to provide more information in the alert
   - `explorer_governance` is the link without the proposal ID, ie program will add /<proposal ID>
   - `pagination_limit` is the number of proposal the program will fetch per request (optional, default is 100)
+
+```bash
+cp .env.example .env
+```
+
+In the .env file, you can specify the port for the prometheus metrics.
+
+## Prometheus metrics
+
+Prometheus metrics are available at http://localhost:<PROMETEHEUS_PORT>, PROMETEHEUS_PORT is the port from the .env file/
+
+```bash
+curl http://localhost:<PROMETEHEUS_PORT>
+```
+Example of metrics
+```bash
+governance_votes_api_req_status_total{api_endpoint="https://rest.cosmos.directory/haqq/cosmos/gov/v1beta1/proposals",name="haqq",network="mainnet",status="success"} 1.0
+```
+The status value can be success or failed
+
 ## TODO 
 - [ ] Add a license
 
