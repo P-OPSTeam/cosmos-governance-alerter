@@ -233,12 +233,12 @@ def send_alert(vote, chain_data, chainname, alerts_config, pdaction = "trigger")
 
 def main():
     """main function"""
-    start_http_server(int(PROMOTEHEUS_PORT))  # start prometheus metrics server
     config = read_config()
     alerts_config = config['alerts_config']
     chain_config = config['chain_config']
     app_config = config['app_config']
     timeout = app_config['timeout']
+    start_http_server(int(app_config["prometheus_port"]))  # start prometheus metrics server
 
     global log
     log = configure_logging(app_config["logformat"], app_config["loglevel"])
