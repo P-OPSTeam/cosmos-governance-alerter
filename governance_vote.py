@@ -1,11 +1,9 @@
 """Governance vote allow the collection of cosmos governance vote"""
 import json
-import os
 import time
 import traceback
 from dateutil import parser
 import requests
-from dotenv import load_dotenv
 from prometheus_client import start_http_server
 from utils import configure_logging
 from metrics import governance_votes_api_req_status_counter
@@ -13,9 +11,6 @@ from constants.metrics_enum import MetricsNetworkStatus
 
 
 log = None
-
-load_dotenv()
-PROMOTEHEUS_PORT = os.getenv("PROMOTEHEUS_PORT", "9090")
 
 def read_config():
     """Read config file"""
