@@ -107,7 +107,15 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                         start_date = vote["submit_time"]
                         end_date = vote["voting_end_time"]
                         status = vote["status"]
-                        content_type = vote["content"]["@type"]
+                        if 'content' in vote:
+                            content_type = vote["content"]["@type"]
+                        elif 'messages' in vote and isinstance(vote["messages"], list) and len(vote["messages"]) > 0:  # nolus
+                            if 'content' in vote["messages"][0]:
+                                content_type = vote["messages"][0]["content"]["@type"]
+                            else:
+                                content_type = vote["messages"][0]["@type"]
+                        else:
+                            content_type = None
 
                         new_vote = {
                             "vote_id": vote_id,
