@@ -98,6 +98,12 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                     else:
                         continue
 
+                    # Update the status field for existing votes
+                    for existing_vote in votes.get(chainname, []):
+                        if existing_vote["vote_id"] == vote_id:
+                            log.info(f"Update status: {chainname} {vote_id}")
+                            existing_vote["status"] = vote["status"]
+
                     if (
                         current_time < end_date and
                         (chainname not in votes or
@@ -132,8 +138,9 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                         # check if the vote is an upgrade
                         if content_type == "/cosmos.upgrade.v1beta1.SoftwareUpgradeProposal" or content_type == "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade":
                             log.info(f"Upgrade vote detected: {chainname} {vote_id}")
-                        
+
                         send_alert(new_vote, chain_data, chainname, alerts_config)
+
 
                 governance_votes_api_req_status_counter.labels(
                     name=chainname,
