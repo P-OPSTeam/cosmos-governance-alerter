@@ -23,6 +23,13 @@ def is_vote_expired(vote):
     current_time = int(time.time())
     return current_time >= parser.parse(vote['end_date']).timestamp()
 
+def has_vote_passed(vote):
+    """Check whether a vote status contains the string STATUS_PASSED"""
+    logmsg = (f'has_vote_passed - vote details - {vote.get("vote_id")} :',
+             f'{"STATUS_PASSED" in vote.get("status", "").upper()}')
+    log.debug(logmsg)
+    return "STATUS_PASSED" in vote.get("status", "").upper()
+
 def load_votes(app_config):
     """Load votes from app_config["votes_file"]"""
     log.info(f"loading votes on {app_config['votes_file']}")
@@ -52,10 +59,15 @@ def remove_expired_votes(config, votes):
         for vote in chain_votes:
             if chainname not in chain_config:
                 log.warning(f"{chainname} not configured")
-            if is_vote_expired(vote) and chainname in chain_config:
+
+            vote_passed = has_vote_passed(vote)
+            vote_expired = is_vote_expired(vote)
+
+            if vote_passed or (vote_expired and chainname in chain_config):
                 send_alert(vote, chain_config[chainname],
                            chainname, alerts_config, pdaction = "resolve")
-        votes[chainname] = [vote for vote in votes[chainname] if not is_vote_expired(vote)]
+        votes[chainname] = [vote for vote in votes[chainname] if not vote_expired and not vote_passed]
+
     save_votes(app_config, votes)
 
 def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
@@ -80,6 +92,8 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                 for vote in vote_proposals:
                     log.debug(f"vote: {json.dumps(vote)}")
 
+                    vote_passed = has_vote_passed(vote)
+
                     # define vote_id
                     vote_id = vote["id"] if v1api else vote ["proposal_id"]
 
@@ -98,14 +112,14 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                     else:
                         continue
 
-                    # Update the status field for existing votes
+                    # Update the status field for existing passed votes
                     for existing_vote in votes.get(chainname, []):
-                        if existing_vote["vote_id"] == vote_id:
+                        if existing_vote["vote_id"] == vote_id and vote_passed:
                             log.info(f"Update status: {chainname} {vote_id}")
                             existing_vote["status"] = vote["status"]
 
                     if (
-                        current_time < end_date and
+                        current_time < end_date and not vote_passed and
                         (chainname not in votes or
                          not any(existing_vote["vote_id"] == vote_id
                                  for existing_vote in votes[chainname]))
