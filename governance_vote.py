@@ -76,8 +76,9 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
         next_page = True # use for looping over the rest answer page
         v1api = "v1/" in chain_data['api_endpoint'] # True when v1 api else, False means we have v1beta1 api
         pagination_limit = chain_data['pagination_limit'] if 'pagination_limit' in chain_data else app_config['default_pagination_limit']
+        headers = {'Accept-Encoding': 'gzip'}
         params = {'pagination.limit': pagination_limit}
-        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params)
+        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params, headers=headers)
 
         while next_page:
             if response.status_code == 200:

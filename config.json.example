@@ -10,7 +10,7 @@
       "votes_file": "votes.json",
       "loglevel" : "INFO",
       "logformat": "text",
-      "default_pagination_limit": 100,
+      "default_pagination_limit": 25,
       "prometheus_port": 9095
     },
     "chain_config": {
