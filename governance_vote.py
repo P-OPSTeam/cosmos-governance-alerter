@@ -4,6 +4,8 @@ import time
 import traceback
 from dateutil import parser
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from prometheus_client import start_http_server
 from utils import configure_logging
 from metrics import governance_votes_api_req_status_counter
@@ -11,6 +13,34 @@ from constants.metrics_enum import MetricsNetworkStatus
 
 
 log = None
+
+
+def create_http_session(app_config):
+    """Create a pooled HTTP session with retries for safe proposal requests."""
+    retry_count = int(app_config.get('request_retries', 2))
+    retry = Retry(
+        total=retry_count,
+        connect=retry_count,
+        read=retry_count,
+        status=retry_count,
+        backoff_factor=float(app_config.get('request_backoff_factor', 0.5)),
+        status_forcelist=(429, 502, 503, 504),
+        allowed_methods=frozenset({'GET'}),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session = requests.Session()
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
+
+
+def get_request_timeout(app_config):
+    """Return separate connection and response timeouts in seconds."""
+    return (
+        float(app_config.get('request_connect_timeout', 5)),
+        float(app_config.get('request_read_timeout', 30)),
+    )
 
 def read_config():
     """Read config file"""
@@ -70,7 +100,8 @@ def remove_expired_votes(config, votes):
 
     save_votes(app_config, votes)
 
-def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
+def check_new_votes(chainname, chain_data, votes, alerts_config, app_config,
+                    http_session):
     """Checking for new governance vote"""
     try:
         next_page = True # use for looping over the rest answer page
@@ -78,7 +109,10 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
         pagination_limit = chain_data['pagination_limit'] if 'pagination_limit' in chain_data else app_config['default_pagination_limit']
         headers = {'Accept-Encoding': 'gzip'}
         params = {'pagination.limit': pagination_limit}
-        response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params, headers=headers)
+        request_timeout = get_request_timeout(app_config)
+        response = http_session.get(
+            chain_data['api_endpoint'], timeout=request_timeout,
+            params=params, headers=headers)
 
         while next_page:
             if response.status_code == 200:
@@ -167,7 +201,9 @@ def check_new_votes(chainname, chain_data, votes, alerts_config, app_config):
                 next_page = next_key is not None
                 if next_page: # call the next page
                     params = {'pagination.key': next_key, 'pagination.limit': pagination_limit}
-                    response = requests.get(f"{chain_data['api_endpoint']}", timeout=30, params=params)
+                    response = http_session.get(
+                        chain_data['api_endpoint'], timeout=request_timeout,
+                        params=params, headers=headers)
             else:
                 next_page = False
                 log.error(response.json())
@@ -263,6 +299,7 @@ def main():
     chain_config = config['chain_config']
     app_config = config['app_config']
     timeout = app_config['timeout']
+    http_session = create_http_session(app_config)
     start_http_server(int(app_config["prometheus_port"]))  # start prometheus metrics server
 
     global log
@@ -276,7 +313,8 @@ def main():
 
         for chain, chain_data in chain_config.items():
             log.info(f"Processing votes on {chain}")
-            check_new_votes(chain, chain_data, votes, alerts_config, app_config)
+            check_new_votes(chain, chain_data, votes, alerts_config, app_config,
+                            http_session)
 
         save_votes(app_config, votes)
         log.info(f"Waiting {timeout} minutes")

@@ -7,6 +7,10 @@
     },
     "app_config": {
       "timeout": 5,
+      "request_connect_timeout": 5,
+      "request_read_timeout": 30,
+      "request_retries": 2,
+      "request_backoff_factor": 0.5,
       "votes_file": "votes.json",
       "loglevel" : "INFO",
       "logformat": "text",

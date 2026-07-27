@@ -26,6 +26,10 @@ Use your favorite editor and edit config.json
 
 - under app_config :
   - `timeout` represent how long we should wait before the next vote checks
+  - `request_connect_timeout`: maximum seconds to establish an API connection (default: 5)
+  - `request_read_timeout`: maximum seconds to wait for an API response (default: 30)
+  - `request_retries`: retries for failed governance API GET requests (default: 2)
+  - `request_backoff_factor`: delay multiplier between retries (default: 0.5)
   - `votes_file` is the filename that stores all the on-going vote in all supported network
   - `format`: The format of the log messages. Can be `json` or `text`.
   - `level`: The log level. Can be `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.
@@ -54,7 +58,6 @@ The status value can be success or failed
 
 ## TODO 
 - [ ] Add a license
-
 
 
 
